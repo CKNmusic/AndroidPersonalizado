@@ -30,7 +30,7 @@ jobs:
           mkdir ~/android-x86
           cd ~/android-x86
           repo init -u https://github.com/android-x86/manifest.git -b master --depth=1
-          repo sync -c -j4
+          repo sync -c -j4 --no-clone-bundle
 
       - name: Remover apps padrão (exceto o navegador)
         run: |
