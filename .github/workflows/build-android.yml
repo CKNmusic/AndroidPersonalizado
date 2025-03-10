@@ -1,0 +1,71 @@
+name: Build Minimal Android-x86 with Browser, APKs and Bootanimation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Instalar dependências
+        run: |
+          sudo apt update
+          sudo apt install openjdk-11-jdk git gnupg flex bison gperf build-essential zip curl \
+            zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev \
+            x11proto-core-dev libx11-dev lib32z-dev libgl1-mesa-dev libxml2-utils xsltproc unzip
+
+      - name: Configurar repo
+        run: |
+          mkdir ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          echo 'export PATH=~/bin:$PATH' >> ~/.bashrc
+          source ~/.bashrc
+
+      - name: Clonar o código-fonte Android-x86
+        run: |
+          mkdir ~/android-x86
+          cd ~/android-x86
+          repo init -u https://github.com/android-x86/manifest.git -b main --depth=1
+          repo sync -c -j4
+
+      - name: Remover apps padrão (exceto o navegador)
+        run: |
+          cd ~/android-x86
+          echo "PRODUCT_PACKAGES := Browser" > device/generic/common/mini.mk
+          echo "PRODUCT_NAME := aosp_mini" >> device/generic/common/mini.mk
+          echo "PRODUCT_DEVICE := generic_x86" >> device/generic/common/mini.mk
+          echo "PRODUCT_BRAND := Android" >> device/generic/common/mini.mk
+          echo "PRODUCT_MODEL := Android Browser Edition" >> device/generic/common/mini.mk
+          echo "PRODUCT_MANUFACTURER := Google" >> device/generic/common/mini.mk
+
+      - name: Adicionar APKs ao sistema
+        run: |
+          cp assets/*.apk ~/android-x86/device/generic/common/preinstall/
+          mkdir -p ~/android-x86/device/generic/common/preinstall
+          echo "Preinstall APKs copiados!"
+
+      - name: Configurar Bootanimation
+        run: |
+          mkdir -p ~/android-x86/device/generic/common/media
+          cp assets/bootanimation.zip ~/android-x86/device/generic/common/media/
+          echo "Bootanimation configurado!"
+
+      - name: Configurar a build minimalista
+        run: |
+          cd ~/android-x86
+          source build/envsetup.sh
+          lunch aosp_mini-userdebug
+          make iso_img -j$(nproc)
+
+      - name: Fazer upload da ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-x86-minimal-iso
+          path: ~/android-x86/out/target/product/x86_64/*.iso
