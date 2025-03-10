@@ -29,7 +29,7 @@ jobs:
           export PATH=$HOME/bin:$PATH
           mkdir ~/android-x86
           cd ~/android-x86
-          repo init -u https://git.osdn.net/gitroot/android-x86/manifest.git -b master --depth=1
+          repo init -u https://android.googlesource.com/platform/manifest.git -b master --depth=1
           repo sync -c -j4 --no-clone-bundle
 
       - name: Remover apps padrão (exceto o navegador)
