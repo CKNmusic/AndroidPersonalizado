@@ -19,7 +19,7 @@ jobs:
           sudo apt update
           sudo apt install openjdk-11-jdk git gnupg flex bison gperf build-essential zip curl \
             zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32z-dev libgl1-mesa-dev \
-            libxml2-utils xsltproc unzip libncurses5-dev lib32ncurses6-dev
+            libxml2-utils xsltproc unzip libncurses5-dev libncurses-dev:i386
 
       - name: Configurar repo
         run: |
@@ -48,8 +48,8 @@ jobs:
 
       - name: Adicionar APKs ao sistema
         run: |
-          cp assets/*.apk ~/android-x86/device/generic/common/preinstall/
           mkdir -p ~/android-x86/device/generic/common/preinstall
+          cp assets/*.apk ~/android-x86/device/generic/common/preinstall/
           echo "Preinstall APKs copiados!"
 
       - name: Configurar Bootanimation
