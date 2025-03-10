@@ -1,12 +1,14 @@
 # Use uma imagem base do Ubuntu
-FROM ubuntu:latest
+FROM ubuntu:20.04
 
-# Defina o diretório de trabalho
-WORKDIR /workspace
+# Defina o mantenedor da imagem
+LABEL maintainer="seu_email@example.com"
 
-# Instale as dependências necessárias
-RUN apt-get update && \
-    apt-get install -y \
+# Defina variáveis de ambiente para evitar interações durante a instalação
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Atualize o sistema e instale as dependências necessárias
+RUN apt-get update && apt-get install -y \
     openjdk-11-jdk \
     git \
     gnupg \
@@ -26,39 +28,35 @@ RUN apt-get update && \
     xsltproc \
     unzip \
     libncurses5-dev \
-    libncurses-dev:i386 && \
-    apt-get clean
+    libncurses-dev:i386 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Configure o repositório 'repo' e clone o código-fonte do Android-x86
-RUN mkdir -p ~/bin && \
-    curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo && \
-    chmod a+x ~/bin/repo && \
-    export PATH=$HOME/bin:$PATH && \
-    mkdir ~/android-x86 && \
-    cd ~/android-x86 && \
-    repo init -u https://android.googlesource.com/platform/manifest.git -b master --depth=1 && \
+# Instale o repo para gerenciar o código-fonte do Android
+RUN mkdir -p /usr/local/bin && \
+    curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin/repo && \
+    chmod a+x /usr/local/bin/repo
+
+# Defina o diretório de trabalho
+WORKDIR /android
+
+# Clone o código-fonte do Android-x86
+RUN repo init -u https://android.googlesource.com/platform/manifest.git -b master --depth=1 && \
     repo sync -c -j4 --no-clone-bundle
 
 # Remova aplicativos padrão, mantendo apenas o navegador
-RUN cd ~/android-x86 && \
-    echo "PRODUCT_PACKAGES := Browser" > device/generic/common/mini.mk && \
+RUN echo "PRODUCT_PACKAGES := Browser" > device/generic/common/mini.mk && \
     echo "PRODUCT_NAME := aosp_mini" >> device/generic/common/mini.mk && \
     echo "PRODUCT_DEVICE := generic_x86" >> device/generic/common/mini.mk && \
     echo "PRODUCT_BRAND := Android" >> device/generic/common/mini.mk && \
     echo "PRODUCT_MODEL := Android Browser Edition" >> device/generic/common/mini.mk && \
     echo "PRODUCT_MANUFACTURER := Google" >> device/generic/common/mini.mk
 
-# Adicione APKs ao sistema
-COPY assets/*.apk /workspace/android-x86/device/generic/common/preinstall/
+# Adicione APKs personalizados ao sistema
+COPY assets/*.apk device/generic/common/preinstall/
 
 # Configure a animação de inicialização
-COPY assets/bootanimation.zip /workspace/android-x86/device/generic/common/media/
+COPY assets/bootanimation.zip device/generic/common/media/
 
-# Configure a build minimalista
-RUN cd ~/android-x86 && \
-    source build/envsetup.sh && \
-    lunch aosp_mini-userdebug && \
-    make iso_img -j$(nproc)
-
-# Defina o comando de entrada
-CMD ["bash"]
+# Defina o comando de construção
+CMD ["bash", "-c", "source build/envsetup.sh && lunch aosp_mini-userdebug && make iso_img -j$(nproc)"]
